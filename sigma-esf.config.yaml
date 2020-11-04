@@ -1,0 +1,34 @@
+title: Endpoint Security Framework log source conditions
+order: 20
+backends:
+  - github.com/bradleyjkemp/sigma-go # Relies on the JSONPath extension
+logsources:
+  esf-process-events:
+    category: process_creation
+    product: macos
+    index: ES_EVENT_TYPE_NOTIFY_EXEC
+
+  esf-file-events:
+    category: file_event
+    product: macos
+    index:
+      - ES_EVENT_TYPE_NOTIFY_CREATE
+      - ES_EVENT_TYPE_NOTIFY_OPEN
+      - ES_EVENT_TYPE_NOTIFY_WRITE
+      - ES_EVENT_TYPE_NOTIFY_CLOSE
+      - ES_EVENT_TYPE_NOTIFY_RENAME
+      - ES_EVENT_TYPE_NOTIFY_LINK
+      - ES_EVENT_TYPE_NOTIFY_UNLINK,
+
+fieldmappings:
+  # Process events
+  ProcessId: pid
+  ProcessName: $.process.arguments[0]
+  Image:
+    - $.process.path
+    - $.file.process.path # for file events
+  CommandLine: $.process.arguments
+  ParentProcessId: $.process.ppid
+
+  # File events
+  TargetFilename: $.file.destination
