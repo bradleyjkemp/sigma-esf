@@ -40,6 +40,7 @@ func main() {
 
 	if *monitorProcesses {
 		procMon := exec.CommandContext(ctx, "/Applications/ProcessMonitor.app/Contents/MacOS/ProcessMonitor", "-pretty")
+		procMon.Stderr = os.Stderr
 		procMonOutput, err := procMon.StdoutPipe()
 		if err != nil {
 			log.Fatal(err)
@@ -59,13 +60,15 @@ func main() {
 
 	if *monitorFiles {
 		fileMon := exec.CommandContext(ctx, "/Applications/FileMonitor.app/Contents/MacOS/FileMonitor", "-pretty")
+		fileMon.Stderr = os.Stderr
 		fileMonOutput, err := fileMon.StdoutPipe()
 		if err != nil {
 			log.Fatal(err)
 		}
 		g.Go(func() error {
 			if err := fileMon.Run(); err != nil {
-				return fmt.Errorf("error running FileMonitor: %w", err)
+				out, _ := ioutil.ReadAll(fileMonOutput)
+				return fmt.Errorf("error running FileMonitor: %w %s", err, string(out))
 			}
 			if !fileMon.ProcessState.Success() {
 				return fmt.Errorf("FileMonitor didn't exit successfully: exit code %d", fileMon.ProcessState.ExitCode())
@@ -137,7 +140,11 @@ func consumeEndpointSecurityFrameworkStream(ctx context.Context, stream io.Reade
 			fmt.Println("invalid message?", message)
 		}
 		for _, rule := range rules[index] {
-			if rule.Matches(context.Background(), message) {
+			result, err := rule.Matches(context.Background(), message)
+			if err != nil {
+				log.Println("Error running rule: ", err)
+			}
+			if result.Match {
 				log.Println("Rule Match!", rule.Title, message)
 			}
 		}
